@@ -1,13 +1,10 @@
 <Project Sdk="Microsoft.NET.Sdk">
+
   <PropertyGroup>
-    <TargetFramework>netstandard2.0</TargetFramework>
-    <Company />
+    <TargetFrameworks>net48;net8.0;net9.0;net10.0</TargetFrameworks>
+    <LangVersion>14</LangVersion>
     <Authors>Joel Weiss</Authors>
-    <PackageId>PersistentMemoryCache</PackageId>
     <Description>Persistent Memory Cache, caches in Memory but also to Disk, so cache is persistent across restarts, build on Top of "Microsoft.Extensions.Caching.Abstractions" and "LiteDB"</Description>
-    <Product>PersistentMemoryCache</Product>
-    <AssemblyName>PersistentMemoryCache</AssemblyName>
-    <RootNamespace>PersistentMemoryCache</RootNamespace>
     <RepositoryUrl>https://github.com/joelweiss/PersistentMemoryCache</RepositoryUrl>
     <PackageProjectUrl>https://github.com/joelweiss/PersistentMemoryCache</PackageProjectUrl>
     <PackageLicenseUrl>https://github.com/joelweiss/PersistentMemoryCache/blob/master/Licence.txt</PackageLicenseUrl>
@@ -15,8 +12,10 @@
     <Version>1.0.0-Beta</Version>
     <GeneratePackageOnBuild>false</GeneratePackageOnBuild>
   </PropertyGroup>
+
   <ItemGroup>
-    <PackageReference Include="LiteDB" Version="3.1.4" />
-    <PackageReference Include="Microsoft.Extensions.Caching.Abstractions" Version="2.0.0" />
+    <PackageReference Include="LiteDB" Version="5.0.21" />
+    <PackageReference Include="Microsoft.Extensions.Caching.Abstractions" Version="10.0.0" />
   </ItemGroup>
+
 </Project>

@@ -1,47 +1,58 @@
 ﻿using System;
-using LiteDB;
 using System.IO;
+using LiteDB;
+using LiteDB.Engine;
 
-namespace PersistentMemoryCache.Internal
+namespace PersistentMemoryCache.Internal;
+
+internal class PersistentLiteDatabase : LiteDatabase
 {
-    internal class PersistentLiteDatabase : LiteDB.LiteDatabase
+    static PersistentLiteDatabase()
     {
-        static PersistentLiteDatabase()
-        {
-            BsonMapper.Global.RegisterType<TimeSpan>
-            (
-                serialize: (ts) => new BsonValue(ts.TotalMilliseconds),
-                deserialize: (bson) => TimeSpan.FromMilliseconds(bson.AsInt32)
-            );
-            BsonMapper.Global.RegisterType<DateTimeOffset>
-            (
-                serialize: (dto) => new BsonValue(dto.UtcDateTime),
-                deserialize: (bson) => bson.AsDateTime.ToUniversalTime()
-            );
-        }
+        BsonMapper.Global.RegisterType<TimeSpan>
+        (
+            serialize: ts => new BsonValue(ts.TotalMilliseconds),
+            deserialize: bson => TimeSpan.FromMilliseconds(bson.AsInt32)
+        );
+        BsonMapper.Global.RegisterType<DateTimeOffset>
+        (
+            serialize: dto => new BsonValue(dto.UtcDateTime),
+            deserialize: bson => bson.AsDateTime.ToUniversalTime()
+        );
+    }
 
-        /// <summary>
-        /// Starts LiteDB database using a connection string for file system database
-        /// </summary>
-        internal PersistentLiteDatabase(string connectionString, BsonMapper mapper = null) : base(connectionString, mapper)
-        {
+    /// <summary>
+    /// Starts LiteDB database using a connection string for file system database
+    /// </summary>
+    internal PersistentLiteDatabase(string connectionString, BsonMapper mapper = null)
+        : base(connectionString, mapper)
+    {
+    }
 
-        }
+    /// <summary>
+    /// Starts LiteDB database using a connection string for file system database
+    /// </summary>
+    internal PersistentLiteDatabase(ConnectionString connectionString, BsonMapper mapper = null)
+        : base(connectionString, mapper)
+    {
+    }
 
-        /// <summary>
-        /// Initialize database using any read/write Stream (like MemoryStream)
-        /// </summary>
-        internal PersistentLiteDatabase(Stream stream, BsonMapper mapper = null) : base(stream, mapper)
-        {
+    /// <summary>
+    /// Starts LiteDB database using a generic Stream implementation (mostly MemoryStream).
+    /// </summary>
+    /// <param name="stream">DataStream reference </param>
+    /// <param name="mapper">BsonMapper mapper reference</param>
+    /// <param name="logStream">LogStream reference </param>
+    internal PersistentLiteDatabase(Stream stream, BsonMapper mapper = null, Stream logStream = null)
+        : base(stream, mapper, logStream)
+    {
+    }
 
-        }
-
-        /// <summary>
-        /// Starts LiteDB database using full parameters
-        /// </summary>
-        internal PersistentLiteDatabase(IDiskService diskService, BsonMapper mapper = null) : base(diskService, mapper)
-        {
-
-        }
+    /// <summary>
+    /// Start LiteDB database using a pre-exiting engine. When LiteDatabase instance dispose engine instance will be disposed too
+    /// </summary>
+    internal PersistentLiteDatabase(ILiteEngine engine, BsonMapper mapper = null, bool disposeOnClose = true)
+        : base(engine, mapper, disposeOnClose)
+    {
     }
 }

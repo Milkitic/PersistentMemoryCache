@@ -1,83 +1,83 @@
-﻿using Microsoft.Extensions.Caching.Memory;
-using System.Collections.Generic;
-using Xunit;
+﻿using System.Collections.Generic;
 using FluentAssertions;
+using Microsoft.Extensions.Caching.Memory;
+using Xunit;
 
-namespace PersistentMemoryCache.Tests
+namespace PersistentMemoryCache.Tests;
+
+public class Tests
 {
-    public class Tests
+    private static PersistentMemoryCache GetCache() =>
+        new(new PersistentMemoryCacheOptions("Test", new LiteDbStore(new LiteDbOptions("Test.db"))));
+
+    [Fact]
+    public void InsertAndRetrieveString()
     {
-        private static PersistentMemoryCache GetCache() => new PersistentMemoryCache(new PersistentMemoryCacheOptions("Test", new LiteDbStore(new LiteDbOptions("Test.db"))));
+        IMemoryCache cache = GetCache();
+        string key = "TestKey";
+        string value = "TestValue";
+        cache.Set(key, value);
+        cache.Dispose();
+        cache = null;
+        cache = GetCache();
 
-        [Fact]
-        public void InsertAndRetrieveString()
-        {
-            IMemoryCache cache = GetCache();
-            string key = "TestKey";
-            string value = "TestValue";
-            cache.Set(key, value);
-            cache.Dispose();
-            cache = null;
-            cache = GetCache();
-
-            string result = cache.Get<string>(key);
-            result.Should().NotBeNull();
-            result.Should().Equals("TestValue");
-        }
+        string result = cache.Get<string>(key);
+        result.Should().NotBeNull();
+        result.Should().BeEquivalentTo("TestValue");
+    }
 
 
-        [Fact]
-        public void InsertAndRetrieveListOfStrings()
-        {
-            IMemoryCache cache = GetCache();
-            string key = "TestListKey";
-            List<string> value = new List<string> { "Value1", "Value2" };
-            cache.Set(key, value);
-            cache.Dispose();
-            cache = null;
-            cache = GetCache();
-            
-            var result = cache.Get<List<string>>(key);
-            result.Should().NotBeNull();
-            result.ShouldBeEquivalentTo(value);
-        }
+    [Fact]
+    public void InsertAndRetrieveListOfStrings()
+    {
+        IMemoryCache cache = GetCache();
+        string key = "TestListKey";
+        List<string> value = ["Value1", "Value2"];
+        cache.Set(key, value);
+        cache.Dispose();
+        cache = null;
+        cache = GetCache();
 
-        [Fact]
-        public void InsertAndRetrieveEmptyList()
-        {
-            IMemoryCache cache = GetCache();
-            string key = "TestEmptyListKey";
-            List<string> value = new List<string>();
-            cache.Set(key, value);
-            cache.Dispose();
-            cache = null;
-            cache = GetCache();
+        var result = cache.Get<List<string>>(key);
+        result.Should().NotBeNull();
+        result.Should().BeEquivalentTo(value);
+    }
 
-            var result = cache.Get<List<string>>(key);
-            result.Should().NotBeNull();
-            result.ShouldBeEquivalentTo(value);
-        }
+    [Fact]
+    public void InsertAndRetrieveEmptyList()
+    {
+        IMemoryCache cache = GetCache();
+        string key = "TestEmptyListKey";
+        List<string> value = [];
+        cache.Set(key, value);
+        cache.Dispose();
+        cache = null;
+        cache = GetCache();
 
-        [Fact]
-        public void InsertAndRetrieveCustomType()
-        {
-            IMemoryCache cache = GetCache();
-            string key = "TestCustomTypeKey";
-            Customer value = new Customer { CustomerId = 1, Name = "Foo" };
-            cache.Set(key, value);
-            cache.Dispose();
-            cache = null;
-            cache = GetCache();
+        var result = cache.Get<List<string>>(key);
+        result.Should().NotBeNull();
+        result.Should().BeEquivalentTo(value);
+    }
 
-            var result = cache.Get(key);
-            result.Should().NotBeNull();
-            result.ShouldBeEquivalentTo(value);
-        }
+    [Fact]
+    public void InsertAndRetrieveCustomType()
+    {
+        IMemoryCache cache = GetCache();
+        string key = "TestCustomTypeKey";
+        Customer value = new Customer { CustomerId = 1, Name = "Foo" };
+        cache.Set(key, value);
+        cache.Dispose();
+        cache = null;
+        cache = GetCache();
 
-        public class Customer
-        {
-            public int CustomerId { get; set; }
-            public string Name { get; set; }
-        }
+        var result = cache.Get(key);
+        result.Should().NotBeNull();
+        result.Should().BeEquivalentTo(value);
+    }
+
+    public class Customer
+    {
+        public int CustomerId { get; set; }
+        public string Name { get; set; }
     }
 }
