@@ -1,4 +1,5 @@
 using System;
+using LiteDB;
 using Microsoft.Extensions.Caching.Memory;
 
 namespace PersistentMemoryCache;
@@ -25,6 +26,7 @@ public class PersistentMemoryCache : IMemoryCache
         _isPersistent = options.IsPersistent;
         _internalCache = new MemoryCache(options);
     }
+
     public ICacheEntry CreateEntry(object key)
     {
         var entry = _internalCache.CreateEntry(key);
@@ -33,36 +35,39 @@ public class PersistentMemoryCache : IMemoryCache
 
     public bool TryGetValue(object key, out object result)
     {
-        if (_internalCache.TryGetValue(key, out result))
+        if (_internalCache.TryGetValue(key, out result)) return true;
+
+        if (!_isPersistent) return false;
+
+        var dbEntry = _store.LoadEntryByKey(key);
+        if (dbEntry == null || dbEntry.CacheName != _cacheName) return false;
+
+        if (dbEntry.AbsoluteExpiration.HasValue && dbEntry.AbsoluteExpiration < DateTimeOffset.UtcNow)
         {
-            return true;
+            _store.RemoveEntry(dbEntry.Id); // Remove expired entry
+            return false;
         }
 
-        if (_isPersistent)
+        object value = dbEntry.Value;
+        if (!string.IsNullOrEmpty(dbEntry.DataType))
         {
-            var dbEntry = _store.LoadEntryByKey(key);
-            if (dbEntry != null && dbEntry.CacheName == _cacheName)
+            var type = Type.GetType(dbEntry.DataType);
+            if (type != null)
             {
-                if (dbEntry.AbsoluteExpiration.HasValue && dbEntry.AbsoluteExpiration < DateTimeOffset.UtcNow)
-                {
-                    _store.RemoveEntry(dbEntry.Id); // 懒惰清理：发现过期了顺手删掉
-                    return false;
-                }
-
-                using (var entry = CreateEntry(key))
-                {
-                    entry.AbsoluteExpiration = dbEntry.AbsoluteExpiration;
-                    entry.SlidingExpiration = dbEntry.SlidingExpiration;
-                    entry.Priority = dbEntry.Priority;
-                    entry.Value = dbEntry.GetValue();
-                }
-
-                result = dbEntry.GetValue();
-                return true;
+                value = BsonMapper.Global.Deserialize(type, dbEntry.Value);
             }
         }
 
-        return false;
+        using (var entry = CreateEntry(key))
+        {
+            entry.AbsoluteExpiration = dbEntry.AbsoluteExpiration;
+            entry.SlidingExpiration = dbEntry.SlidingExpiration;
+            entry.Priority = dbEntry.Priority;
+            entry.Value = value;
+        }
+
+        result = value;
+        return true;
     }
 
     public void Remove(object key)

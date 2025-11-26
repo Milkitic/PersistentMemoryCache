@@ -2,15 +2,9 @@ using Microsoft.Extensions.Caching.Memory;
 
 namespace PersistentMemoryCache;
 
-public class PersistentMemoryCacheOptions : MemoryCacheOptions
+public class PersistentMemoryCacheOptions(string cacheName, IPersistentStore persistentStore) : MemoryCacheOptions
 {
-    public PersistentMemoryCacheOptions(string cacheName, IPersistentStore persistentStore)
-    {
-        CacheName = cacheName;
-        PersistentStore = persistentStore;
-    }
-
-    public string CacheName { get; }
-    public IPersistentStore PersistentStore { get; }
+    public string CacheName { get; } = cacheName;
+    public IPersistentStore PersistentStore { get; } = persistentStore;
     public bool IsPersistent { get; set; } = true;
 }

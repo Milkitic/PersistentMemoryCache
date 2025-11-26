@@ -2,12 +2,7 @@
 
 namespace PersistentMemoryCache;
 
-public class LiteDbOptions
+public class LiteDbOptions(string fileName)
 {
-    public LiteDbOptions(string fileName)
-    {
-        FileName = fileName ?? throw new ArgumentNullException(nameof(fileName));
-    }
-
-    public string FileName { get; }
+    public string FileName { get; } = fileName ?? throw new ArgumentNullException(nameof(fileName));
 }

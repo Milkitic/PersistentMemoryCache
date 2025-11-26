@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using LiteDB;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Primitives;
 using PersistentMemoryCache.Internal;
@@ -26,11 +27,13 @@ public class PersistentCacheEntryWrapper : ICacheEntry
     {
         if (_isPersistent && Value != null)
         {
-            var liteDbEntry = new LiteDbCacheEntry<object>
+            var valueType = Value.GetType();
+            var liteDbEntry = new LiteDbCacheEntry
             {
                 CacheName = _cacheName,
                 Key = Key,
-                Value = Value,
+                DataType = valueType.AssemblyQualifiedName,
+                Value = BsonMapper.Global.Serialize(valueType, Value),
                 AbsoluteExpiration = AbsoluteExpiration,
                 SlidingExpiration = SlidingExpiration,
                 Priority = Priority,
@@ -49,7 +52,7 @@ public class PersistentCacheEntryWrapper : ICacheEntry
 
         if (reason == EvictionReason.Capacity)
         {
-            return; // 仅仅从内存消失，磁盘里还有
+            return; // Only remove from memory, keep in persistent store
         }
 
         _store.RemoveEntryByKey(key);
