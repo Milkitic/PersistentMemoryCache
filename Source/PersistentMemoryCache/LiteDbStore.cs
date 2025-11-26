@@ -1,6 +1,4 @@
-﻿using System.Collections.Generic;
-using System.Linq;
-using LiteDB;
+﻿using LiteDB;
 using PersistentMemoryCache.Internal;
 
 namespace PersistentMemoryCache;
@@ -18,32 +16,35 @@ public class LiteDbStore : IPersistentStore
         collection.EnsureIndex(pce => pce.CacheName);
     }
 
-    public int AddEntry(LiteDbCacheEntry entry)
+    public LiteDbCacheEntry LoadEntryByKey(object key)
     {
         using var db = new PersistentLiteDatabase(_connectionString);
         var collection = db.GetCollection<LiteDbCacheEntry>(CollectionName);
-        return collection.Insert(entry).AsInt32;
+        return collection.FindOne(x => x.Key == key);
     }
 
-    public List<LiteDbCacheEntry> LoadEntries(string cacheName)
+    public void RemoveEntryByKey(object key)
     {
         using var db = new PersistentLiteDatabase(_connectionString);
         var collection = db.GetCollection<LiteDbCacheEntry>(CollectionName);
-        return collection.Find(pce => pce.CacheName == cacheName).ToList();
+        collection.DeleteMany(x => x.Key == key);
     }
 
-    public LiteDbCacheEntry LoadEntry(int key)
+    public void AddOrUpdateEntry(LiteDbCacheEntry entry)
     {
         using var db = new PersistentLiteDatabase(_connectionString);
         var collection = db.GetCollection<LiteDbCacheEntry>(CollectionName);
-        return collection.FindById(new BsonValue(key));
-    }
 
-    public bool UpdateEntry(int key, LiteDbCacheEntry entry)
-    {
-        using var db = new PersistentLiteDatabase(_connectionString);
-        var collection = db.GetCollection<LiteDbCacheEntry>(CollectionName);
-        return collection.Update(new BsonValue(key), entry);
+        var existing = collection.FindOne(x => x.Key == entry.Key && x.CacheName == entry.CacheName);
+        if (existing != null)
+        {
+            entry.Id = existing.Id;
+            collection.Update(entry);
+        }
+        else
+        {
+            collection.Insert(entry);
+        }
     }
 
     public void RemoveEntry(int id)

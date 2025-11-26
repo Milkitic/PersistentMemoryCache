@@ -1,9 +1,8 @@
-using System;
-using Microsoft.Extensions.Internal;
+using Microsoft.Extensions.Caching.Memory;
 
 namespace PersistentMemoryCache;
 
-public class PersistentMemoryCacheOptions
+public class PersistentMemoryCacheOptions : MemoryCacheOptions
 {
     public PersistentMemoryCacheOptions(string cacheName, IPersistentStore persistentStore)
     {
@@ -13,8 +12,5 @@ public class PersistentMemoryCacheOptions
 
     public string CacheName { get; }
     public IPersistentStore PersistentStore { get; }
-    public ISystemClock Clock { get; set; } = new SystemClock();
-    public bool CompactOnMemoryPressure { get; set; } = true;
-    public TimeSpan ExpirationScanFrequency { get; set; } = TimeSpan.FromMinutes(1);
     public bool IsPersistent { get; set; } = true;
 }

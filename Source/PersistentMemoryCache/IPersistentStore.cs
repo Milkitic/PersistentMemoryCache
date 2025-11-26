@@ -1,13 +1,11 @@
-﻿using System.Collections.Generic;
-using PersistentMemoryCache.Internal;
+﻿using PersistentMemoryCache.Internal;
 
 namespace PersistentMemoryCache;
 
 public interface IPersistentStore
 {
-    int AddEntry(LiteDbCacheEntry entry);
-    LiteDbCacheEntry LoadEntry(int key);
-    List<LiteDbCacheEntry> LoadEntries(string cacheName);
+    void AddOrUpdateEntry(LiteDbCacheEntry entry);
+    LiteDbCacheEntry LoadEntryByKey(object key);
+    void RemoveEntryByKey(object key);
     void RemoveEntry(int id);
-    bool UpdateEntry(int key, LiteDbCacheEntry entry);
 }
