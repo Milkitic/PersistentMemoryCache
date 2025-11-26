@@ -17,7 +17,7 @@ namespace PersistentMemoryCache;
 /// </summary>
 public class PersistentMemoryCache : IMemoryCache
 {
-    private Dictionary<object, PersistentCacheEntry> _inMemoryEntries;
+    private readonly Dictionary<object, PersistentCacheEntry> _inMemoryEntries;
     private readonly ReaderWriterLockSlim _entryLock;
     private bool _disposed;
 
@@ -28,7 +28,7 @@ public class PersistentMemoryCache : IMemoryCache
 
     private DateTimeOffset _lastExpirationScan;
     private bool _isReloadingFromStore;
-    private PersistentMemoryCacheOptions _options;
+    private readonly PersistentMemoryCacheOptions _options;
 
     /// <summary>
     /// Creates a new <see cref="PersistentMemoryCache"/> instance.
@@ -36,12 +36,7 @@ public class PersistentMemoryCache : IMemoryCache
     /// <param name="options">The options of the cache.</param>
     public PersistentMemoryCache(PersistentMemoryCacheOptions options)
     {
-        if (options == null)
-        {
-            throw new ArgumentNullException(nameof(options));
-        }
-
-        _options = options;
+        _options = options ?? throw new ArgumentNullException(nameof(options));
 
         _inMemoryEntries = new Dictionary<object, PersistentCacheEntry>();
         _entryLock = new ReaderWriterLockSlim();
@@ -219,8 +214,7 @@ public class PersistentMemoryCache : IMemoryCache
         _entryLock.EnterReadLock();
         try
         {
-            PersistentCacheEntry entry;
-            if (_inMemoryEntries.TryGetValue(key, out entry))
+            if (_inMemoryEntries.TryGetValue(key, out var entry))
             {
                 // Check if expired due to expiration tokens, timers, etc. and if so, remove it.
                 if (entry.CheckExpired(utcNow))
@@ -288,8 +282,7 @@ public class PersistentMemoryCache : IMemoryCache
         try
         {
             // Only remove it if someone hasn't modified it since our lookup
-            PersistentCacheEntry currentEntry;
-            if (_inMemoryEntries.TryGetValue(entry.Key, out currentEntry)
+            if (_inMemoryEntries.TryGetValue(entry.Key, out var currentEntry)
                 && ReferenceEquals(currentEntry, entry))
             {
                 RemoveEntryFromMemoryAndStore(entry);
@@ -324,8 +317,7 @@ public class PersistentMemoryCache : IMemoryCache
             foreach (var entry in entries)
             {
                 // Only remove it if someone hasn't modified it since our lookup
-                PersistentCacheEntry currentEntry;
-                if (_inMemoryEntries.TryGetValue(entry.Key, out currentEntry) && ReferenceEquals(currentEntry, entry))
+                if (_inMemoryEntries.TryGetValue(entry.Key, out var currentEntry) && ReferenceEquals(currentEntry, entry))
                 {
                     RemoveEntryFromMemoryAndStore(entry);
                 }

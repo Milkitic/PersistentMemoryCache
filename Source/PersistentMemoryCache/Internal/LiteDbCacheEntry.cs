@@ -7,9 +7,9 @@ namespace PersistentMemoryCache.Internal;
 
 public abstract class LiteDbCacheEntry
 {
-    private static ConcurrentDictionary<Type, Delegate> _constructors = new();
-    private static Type _liteDbCacheEntryOpenType = typeof(LiteDbCacheEntry<>);
-    private static Type[] _emptyTypesArray = [];
+    private static readonly ConcurrentDictionary<Type, Delegate> Constructors = new();
+    private static readonly Type LiteDbCacheEntryOpenType = typeof(LiteDbCacheEntry<>);
+    private static readonly Type[] EmptyTypesArray = [];
 
     private TimeSpan? _slidingExpiration;
 
@@ -19,34 +19,40 @@ public abstract class LiteDbCacheEntry
     public object Key { get; set; }
     internal DateTimeOffset LastAccessed { get; set; }
     public DateTimeOffset? AbsoluteExpiration { get; set; }
+
     public TimeSpan? SlidingExpiration
     {
         get
         {
             if (_slidingExpiration <= TimeSpan.Zero)
             {
-                throw new ArgumentOutOfRangeException(nameof(SlidingExpiration), _slidingExpiration, "The sliding expiration value must be positive.");
+                throw new ArgumentOutOfRangeException(nameof(SlidingExpiration), _slidingExpiration,
+                    "The sliding expiration value must be positive.");
             }
+
             return _slidingExpiration;
         }
         set
         {
             if (value <= TimeSpan.Zero)
             {
-                throw new ArgumentOutOfRangeException(nameof(SlidingExpiration), value, "The sliding expiration value must be positive.");
+                throw new ArgumentOutOfRangeException(nameof(SlidingExpiration), value,
+                    "The sliding expiration value must be positive.");
             }
+
             _slidingExpiration = value;
         }
     }
 
-    public static LiteDbCacheEntry ConstructCacheEntry(Type type) => (LiteDbCacheEntry)_constructors.GetOrAdd(type, cacheType =>
-    {
-        var cacheEntryClosedType = _liteDbCacheEntryOpenType.MakeGenericType(type);
-        var constructor = cacheEntryClosedType.GetConstructor(_emptyTypesArray);
-        var delegateType = typeof(Func<>).MakeGenericType(cacheEntryClosedType);
-        var lambda = Expression.Lambda(delegateType, Expression.New(constructor));
-        return lambda.Compile();
-    }).DynamicInvoke();
+    public static LiteDbCacheEntry ConstructCacheEntry(Type type) => (LiteDbCacheEntry)Constructors.GetOrAdd(type,
+        cacheType =>
+        {
+            var cacheEntryClosedType = LiteDbCacheEntryOpenType.MakeGenericType(type);
+            var constructor = cacheEntryClosedType.GetConstructor(EmptyTypesArray);
+            var delegateType = typeof(Func<>).MakeGenericType(cacheEntryClosedType);
+            var lambda = Expression.Lambda(delegateType, Expression.New(constructor));
+            return lambda.Compile();
+        }).DynamicInvoke();
 
     public abstract object GetValue();
     public abstract void SetValue(object value);
