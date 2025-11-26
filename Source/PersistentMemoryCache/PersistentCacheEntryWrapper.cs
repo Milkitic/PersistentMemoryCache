@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using LiteDB;
 using Microsoft.Extensions.Caching.Memory;
