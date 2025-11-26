@@ -1,56 +1,95 @@
-﻿using LiteDB;
+﻿using System;
+using System.Collections.Concurrent;
+using System.Threading.Tasks;
+using LiteDB;
 using PersistentMemoryCache.Internal;
 
 namespace PersistentMemoryCache;
 
-public class LiteDbStore : IPersistentStore
+public class LiteDbStore : IPersistentStore, IDisposable
 {
     private const string CollectionName = "PersistedCacheEntry";
-    private readonly string _connectionString;
+    private readonly PersistentLiteDatabase _db;
+    private readonly ILiteCollection<LiteDbCacheEntry> _collection;
+    private readonly BlockingCollection<Action> _writeQueue = new BlockingCollection<Action>();
+    private readonly Task _backgroundTask;
 
     public LiteDbStore(LiteDbOptions options)
     {
-        _connectionString = $"filename={options.FileName};upgrade=true";
-        using var db = new PersistentLiteDatabase(_connectionString);
-        var collection = db.GetCollection<LiteDbCacheEntry>(CollectionName);
-        collection.EnsureIndex(pce => pce.CacheName);
+        var connectionString = $"filename={options.FileName};upgrade=true";
+        _db = new PersistentLiteDatabase(connectionString);
+        _collection = _db.GetCollection<LiteDbCacheEntry>(CollectionName);
+        
+        _collection.EnsureIndex(pce => pce.CacheName);
+        _collection.EnsureIndex(pce => pce.Key);
+
+        _backgroundTask = Task.Factory.StartNew(ProcessQueue, TaskCreationOptions.LongRunning);
+    }
+
+    private void ProcessQueue()
+    {
+        foreach (var action in _writeQueue.GetConsumingEnumerable())
+        {
+            try
+            {
+                action();
+            }
+            catch
+            {
+                // Ignore errors in background thread to prevent crash
+            }
+        }
     }
 
     public LiteDbCacheEntry LoadEntryByKey(object key)
     {
-        using var db = new PersistentLiteDatabase(_connectionString);
-        var collection = db.GetCollection<LiteDbCacheEntry>(CollectionName);
-        return collection.FindOne(x => x.Key == key);
+        return _collection.FindOne(x => x.Key == key);
     }
 
     public void RemoveEntryByKey(object key)
     {
-        using var db = new PersistentLiteDatabase(_connectionString);
-        var collection = db.GetCollection<LiteDbCacheEntry>(CollectionName);
-        collection.DeleteMany(x => x.Key == key);
+        _writeQueue.Add(() => 
+        {
+            _collection.DeleteMany(x => x.Key == key);
+        });
     }
 
     public void AddOrUpdateEntry(LiteDbCacheEntry entry)
     {
-        using var db = new PersistentLiteDatabase(_connectionString);
-        var collection = db.GetCollection<LiteDbCacheEntry>(CollectionName);
-
-        var existing = collection.FindOne(x => x.Key == entry.Key && x.CacheName == entry.CacheName);
-        if (existing != null)
+        _writeQueue.Add(() =>
         {
-            entry.Id = existing.Id;
-            collection.Update(entry);
-        }
-        else
-        {
-            collection.Insert(entry);
-        }
+            var existing = _collection.FindOne(x => x.Key == entry.Key && x.CacheName == entry.CacheName);
+            if (existing != null)
+            {
+                entry.Id = existing.Id;
+                _collection.Update(entry);
+            }
+            else
+            {
+                _collection.Insert(entry);
+            }
+        });
     }
 
     public void RemoveEntry(int id)
     {
-        using var db = new LiteDatabase(_connectionString);
-        var collection = db.GetCollection<LiteDbCacheEntry>(CollectionName);
-        collection.Delete(new BsonValue(id));
+        _writeQueue.Add(() =>
+        {
+            _collection.Delete(new BsonValue(id));
+        });
+    }
+
+    public void Dispose()
+    {
+        _writeQueue.CompleteAdding();
+        try
+        {
+            _backgroundTask.Wait(5000);
+        }
+        catch
+        {
+            // Ignore wait errors
+        }
+        _db.Dispose();
     }
 }

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using LiteDB;
 using Microsoft.Extensions.Caching.Memory;
 
@@ -82,5 +82,9 @@ public class PersistentMemoryCache : IMemoryCache
     public void Dispose()
     {
         _internalCache.Dispose();
+        if (_store is IDisposable disposableStore)
+        {
+            disposableStore.Dispose();
+        }
     }
 }

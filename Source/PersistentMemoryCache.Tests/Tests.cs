@@ -1,4 +1,6 @@
-﻿using System.Collections.Generic;
+using System;
+using System.Collections.Generic;
+using System.IO;
 using FluentAssertions;
 using Microsoft.Extensions.Caching.Memory;
 using Xunit;
@@ -7,72 +9,115 @@ namespace PersistentMemoryCache.Tests;
 
 public class Tests
 {
-    private static PersistentMemoryCache GetCache() =>
-        new(new PersistentMemoryCacheOptions("Test", new LiteDbStore(new LiteDbOptions("Test.db"))));
+    private static PersistentMemoryCache GetCache(string dbName) =>
+        new(new PersistentMemoryCacheOptions("Test", new LiteDbStore(new LiteDbOptions(dbName))));
 
     [Fact]
     public void InsertAndRetrieveString()
     {
-        IMemoryCache cache = GetCache();
-        string key = "TestKey";
-        string value = "TestValue";
-        cache.Set(key, value);
-        cache.Dispose();
-        cache = null;
-        cache = GetCache();
+        var dbName = $"{Guid.NewGuid()}.db";
+        try
+        {
+            using (var cache1 = GetCache(dbName))
+            {
+                string key = "TestKey";
+                string value = "TestValue";
+                cache1.Set(key, value);
+            }
 
-        string result = cache.Get<string>(key);
-        result.Should().NotBeNull();
-        result.Should().BeEquivalentTo("TestValue");
+            using (var cache2 = GetCache(dbName))
+            {
+                string key = "TestKey";
+                string result = cache2.Get<string>(key);
+                result.Should().NotBeNull();
+                result.Should().BeEquivalentTo("TestValue");
+            }
+        }
+        finally
+        {
+            try { File.Delete(dbName); } catch { }
+        }
     }
-
 
     [Fact]
     public void InsertAndRetrieveListOfStrings()
     {
-        IMemoryCache cache = GetCache();
-        string key = "TestListKey";
+        var dbName = $"{Guid.NewGuid()}.db";
         List<string> value = ["Value1", "Value2"];
-        cache.Set(key, value);
-        cache.Dispose();
-        cache = null;
-        cache = GetCache();
+        try
+        {
+            using (var cache1 = GetCache(dbName))
+            {
+                string key = "TestListKey";
+                cache1.Set(key, value);
+            }
 
-        var result = cache.Get<List<string>>(key);
-        result.Should().NotBeNull();
-        result.Should().BeEquivalentTo(value);
+            using (var cache2 = GetCache(dbName))
+            {
+                string key = "TestListKey";
+                var result = cache2.Get<List<string>>(key);
+                result.Should().NotBeNull();
+                result.Should().BeEquivalentTo(value);
+            }
+        }
+        finally
+        {
+            try { File.Delete(dbName); } catch { }
+        }
     }
 
     [Fact]
     public void InsertAndRetrieveEmptyList()
     {
-        IMemoryCache cache = GetCache();
-        string key = "TestEmptyListKey";
+        var dbName = $"{Guid.NewGuid()}.db";
         List<string> value = [];
-        cache.Set(key, value);
-        cache.Dispose();
-        cache = null;
-        cache = GetCache();
+        try
+        {
+            using (var cache1 = GetCache(dbName))
+            {
+                string key = "TestEmptyListKey";
+                cache1.Set(key, value);
+            }
 
-        var result = cache.Get<List<string>>(key);
-        result.Should().NotBeNull();
-        result.Should().BeEquivalentTo(value);
+            using (var cache2 = GetCache(dbName))
+            {
+                string key = "TestEmptyListKey";
+                var result = cache2.Get<List<string>>(key);
+                result.Should().NotBeNull();
+                result.Should().BeEquivalentTo(value);
+            }
+        }
+        finally
+        {
+            try { File.Delete(dbName); } catch { }
+        }
     }
 
     [Fact]
     public void InsertAndRetrieveCustomType()
     {
-        IMemoryCache cache = GetCache();
-        string key = "TestCustomTypeKey";
+        var dbName = $"{Guid.NewGuid()}.db";
         Customer value = new Customer { CustomerId = 1, Name = "Foo" };
-        cache.Set(key, value);
-        cache.Dispose();
-        cache = null;
-        cache = GetCache();
+        try
+        {
+            using (var cache1 = GetCache(dbName))
+            {
+                string key = "TestCustomTypeKey";
+                cache1.Set(key, value);
+            }
 
-        var result = cache.Get(key);
-        result.Should().NotBeNull();
-        result.Should().BeEquivalentTo(value);
+            using (var cache2 = GetCache(dbName))
+            {
+                string key = "TestCustomTypeKey";
+                var result = cache2.Get(key);
+                result.Should().NotBeNull();
+                result.Should().BeEquivalentTo(value);
+            }
+        }
+        finally
+        {
+            try { File.Delete(dbName); } catch { }
+        }
     }
 
     public class Customer
